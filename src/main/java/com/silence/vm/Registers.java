@@ -10,8 +10,8 @@ public class Registers {
         R_R5(5),
         R_R6(6),
         R_R7(7),
-        R_RC(8),
-        R_COND(9),
+        R_PC(8), /** program counter */
+        R_COND(9), /** condition register , condition calculation result*/
         R_COUNT(10);
         public int val(){
             return val;
