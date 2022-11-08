@@ -48,4 +48,19 @@ public class Emulator {
         }else // positive
             reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_POS;
     }
+
+    /** ldi instruction */
+    /**  15       12 11     9  8     6  5  4  3  2     0 */
+    /** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | */
+    /** |   1010    |    DR  |          PCoffset9       | */
+    /**
+     * ldi 指令是用于将内存的值装载入寄存器。
+     * PCoffset从8位符号扩展到16位，然后将该值与增加的PC相加后得到的地址是内存需要加到内存的数据的地址
+     */
+    void LDI(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+        reg[r0] = Memory.get(Memory.get(reg[Registers.Register.R_PC.val()] + pc_offset));
+        update_flag(r0);
+    }
 }
