@@ -236,7 +236,7 @@ public class Emulator {
         System.out.println("Enter a character : ");
         Scanner scanner = new Scanner(System.in);
         char c = (char) scanner.nextByte();
-        System.out.println(c);
+        System.out.print(c);
         reg[Registers.R_R0] = c;
         update_flag( Registers.R_R0);
     }
@@ -257,6 +257,7 @@ public class Emulator {
 
     void trap_halt(){
         System.out.println("HALT");
+        System.exit(0);
     }
 
     void run_instruction(int instr){

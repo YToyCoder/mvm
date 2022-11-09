@@ -20,17 +20,14 @@ public class VM {
       buffer = ByteBuffer.allocate(max_read_16bit * 2);
       byteChannel.read(buffer);
       buffer.flip();
-      int count = 0;
       for(int i=0; i<max_read_16bit && buffer.hasRemaining(); i++){
         byte one = buffer.get();
         byte two = buffer.get();
         // 15         8 7         0
         // |<- 8 bit ->|<- 8 bit ->|
         //      one        two
-        count++;
         int merged = merge(one, two);
         Memory.mem_write(origin + i, merged);
-        if(count % 10 == 0) System.out.println();
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
