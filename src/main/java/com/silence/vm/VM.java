@@ -12,17 +12,27 @@ public class VM {
     ByteBuffer buffer = ByteBuffer.allocate(2);
     try {
       byteChannel.read(buffer);
-      byte[] array = buffer.array();
-      short origin = merge(array[0] , array[1]);
+      buffer.flip();
+      int origin = merge(buffer.get() , buffer.get());
+      if(buffer.hasRemaining())
+        System.out.println("origin buffer remaining");
+      System.out.println("origin is " + origin);
       int max_read_16bit = (Memory.MEMORY_MAX - origin);
       buffer = ByteBuffer.allocate(max_read_16bit * 2);
+      byteChannel.read(buffer);
+      buffer.flip();
+      int count = 0;
       for(int i=0; i<max_read_16bit && buffer.hasRemaining(); i++){
         byte one = buffer.get();
         byte two = buffer.get();
         // 15         8 7         0
         // |<- 8 bit ->|<- 8 bit ->|
         //      one        two
-        Memory.mem_write(origin + i, merge(one, two));
+        count++;
+        int merged = merge(one, two);
+        System.out.printf("%d ", merged);
+        Memory.mem_write(origin + i, merged);
+        if(count % 10 == 0) System.out.println();
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -30,9 +40,12 @@ public class VM {
   }
 
   static void read_image(String file_name){
-    if(Files.exists(Path.of(file_name)))
+    if(!Files.exists(Path.of(file_name))){
       System.err.println("can't find file %s".formatted(file_name));
+      System.exit(1);
+    }
     else {
+      System.out.println("loading file %s in read_image".formatted(file_name));
       try(
           RandomAccessFile file = new RandomAccessFile(file_name, "rw");
           ReadableByteChannel channel = file.getChannel();
@@ -47,11 +60,43 @@ public class VM {
   // 15         8 7         0
   // |<- 8 bit ->|<- 8 bit ->|
   //      one        two
-  static  short merge(byte one, byte two){
-    return (short) ((one << 8) | (two));
+  static int merge(byte one, byte two){
+    int convertedOne = (one & 0xff);
+    int convertedTwo = two & 0xff;
+    System.out.printf(" %d %d ", convertedOne, convertedTwo);
+    return (convertedOne << 8) | convertedTwo;
   }
 
-  static short swap16(short x){
-    return (short) ((x << 8) | (x >> 8));
+  static final short PC_START = 0x3000;
+  public static void run(String[] args){
+    // load arguments
+    if(args.length < 1){
+      System.out.println("lc3 [image-file1] ...");
+      System.exit(2);
+    }
+
+    for (int j=0; j < args.length; j++){
+      System.out.println("loading file %s ...".formatted(args[j]));
+      read_image(args[j]);
+    }
+
+    // setup
+    Emulator emulator = new Emulator();
+
+    // set cond flag
+    emulator.setReg( Registers.R_COND, ConditionFlags.FL_ZRO);
+
+    // set pc to starting position
+    // 0x3000 is the default
+    emulator.setReg( Registers.R_PC, PC_START);
+
+    boolean running = true;
+    while (running){
+      int instr = Memory.mem_read(emulator.getReg(Registers.R_PC));
+      emulator.setReg(Registers.R_PC, emulator.getReg(Registers.R_PC) + 1);
+      emulator.run_instruction(instr);
+    }
+    System.out.println("lc3 run exit");
+
   }
 }
