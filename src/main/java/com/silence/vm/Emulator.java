@@ -50,7 +50,7 @@ public class Emulator {
         update_flag(r0);
     }
     int sign_extend(int x, int bit_count){
-        if(((x >> (bit_count - 1)) & 1) == 1)
+        if(((x >> (bit_count - 1)) & 1) != 0)
             // negative number
             // 543210
             // 111111
@@ -136,7 +136,7 @@ public class Emulator {
         reg[Registers.R_R7] = reg[Registers.R_PC];
         if(long_flag != 0){
             int long_pc_offset = sign_extend(instr & 0x7FF, 11);
-            reg[Registers.R_PC] = long_pc_offset;
+            reg[Registers.R_PC] += long_pc_offset;
         }else {
             int r1 = (instr >> 6) & 0x7;
             reg[Registers.R_PC] = reg[r1];
@@ -161,6 +161,7 @@ public class Emulator {
         int r1 = (instr >> 6) & 0x7;
         int offset = sign_extend( instr & 0x3F, 6);
         reg[r0] = Memory.mem_read(reg[r1] + offset);
+        update_flag(r0);
     }
 
     /** load effective address */
