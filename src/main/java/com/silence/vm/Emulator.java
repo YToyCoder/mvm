@@ -1,5 +1,7 @@
 package com.silence.vm;
 
+import java.util.Scanner;
+
 public class Emulator {
     private short[] reg = new short[Registers.R_COUNT];
 
@@ -154,5 +156,63 @@ public class Emulator {
         short r1 = (short) ((instr >> 6) & 0x7);
         short offset = sign_extend((short) (instr & 0x3F), 6);
         Memory.mem_write(reg[r1] + offset, reg[r0]);
+    }
+
+    void trap(short instr){
+        reg[Registers.R_R7] = reg[Registers.R_PC];
+        switch (instr & 0xFF){
+            case TrapCodes.TRAP_GETC -> trap_getc();
+            case TrapCodes.TRAP_OUT -> trap_out();
+            case TrapCodes.TRAP_PUTS -> trap_puts();
+            case TrapCodes.TRAP_IN -> trap_in();
+            case TrapCodes.TRAP_PUTSP -> trap_putsp();
+            case TrapCodes.TRAP_HALT -> trap_halt();
+        }
+    }
+
+    void trap_puts(){
+        short c = (short) (0 + reg[Registers.R_R0]);
+        StringBuilder builder = new StringBuilder();
+        while(Memory.mem_read(c) != 0){
+            builder.append((char) Memory.mem_read(c));
+        }
+        System.out.println(builder);
+    }
+
+    void trap_getc(){
+        Scanner scanner = new Scanner(System.in);
+        reg[Registers.R_R0] = scanner.nextByte();
+        update_flag((short) Registers.R_R0);
+    }
+
+    void trap_out(){
+        System.out.println((char) reg[Registers.R_R0]);
+    }
+
+    void trap_in(){
+        System.out.println("Enter a character : ");
+        Scanner scanner = new Scanner(System.in);
+        char c = (char) scanner.nextByte();
+        System.out.println(c);
+        reg[Registers.R_R0] = (short) c;
+        update_flag((short) Registers.R_R0);
+    }
+
+    void trap_putsp(){
+        short c = (short) (0 + reg[Registers.R_R0]);
+        StringBuilder builder = new StringBuilder();
+        while(Memory.mem_read(c) != 0){
+            char char1 = (char) (Memory.mem_read(c) & 0xFF);
+            builder.append(char1);
+            char char2 = (char) (Memory.mem_read(c) >> 8);
+            if(char2 != 0)
+                builder.append(char2);
+            ++c;
+        }
+        System.out.print(builder);
+    }
+
+    void trap_halt(){
+        System.out.println("HALT");
     }
 }
