@@ -1,7 +1,7 @@
 package com.silence.vm;
 
 public class Emulator {
-    private short[] reg = new short[Registers.Register.values().length];
+    private short[] reg = new short[Registers.R_COUNT];
 
     /*** add instruction */
     /**  15       12 11     9  8     6  5  4  3  2     0 */
@@ -21,7 +21,7 @@ public class Emulator {
         short r0 = (short) ((instruction >> 9) & 0x7);
         short r1 = (short) ((instruction >> 6) & 0x7);
         short imm_flag = (short) ((instruction >> 5) & 0x1);
-        if(imm_flag == 1){
+        if(imm_flag != 0){
             short imm5 = sign_extend((short) (instruction & 0x1F), 5);
             reg[r0] = (short) (reg[r1] + imm5);
         }else {
@@ -42,11 +42,14 @@ public class Emulator {
 
     void update_flag(short r){
         if(reg[r] == 0){ // equal
-            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_ZRO;
+//            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_ZRO;
+            reg[Registers.R_COND] = ConditionFlags.FL_ZRO;
         }else if(reg[r] >> 15 == 1){ // negative
-            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_NEG;
+//            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_NEG;
+            reg[Registers.R_COND] = ConditionFlags.FL_NEG;
         }else // positive
-            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_POS;
+//            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_POS;
+            reg[Registers.R_COND] = ConditionFlags.FL_POS;
     }
 
     /** ldi instruction */
@@ -60,7 +63,96 @@ public class Emulator {
     void LDI(short instr){
         short r0 = (short) ((instr >> 9) & 0x7);
         short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
-        reg[r0] = Memory.get(Memory.get(reg[Registers.Register.R_PC.val()] + pc_offset));
+//        reg[r0] = Memory.get(Memory.get(reg[Registers.Register.R_PC.val()] + pc_offset));
+        reg[r0] = Memory.mem_read(Memory.mem_read(reg[Registers.R_PC] + pc_offset));
         update_flag(r0);
+    }
+
+    void AND(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short r1 = (short) ((instr >> 6) & 0x7);
+        short imm_flag = (short) ((instr >> 5) & 0x1);
+        if(imm_flag != 0){
+            short imm5 = sign_extend((short) (instr & 0x1F), 5);
+            reg[r0] = (short) (reg[r1] & imm5);
+        }else {
+            short r2 = (short) (instr & 0x7);
+            reg[r0] = (short) (reg[r1] & reg[r2]);
+        }
+        update_flag(r0);
+    }
+
+    void NOT(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short r1 = (short) ((instr >> 6) & 0x7);
+        reg[r0] = (short) ~reg[r1];
+        update_flag(r0);
+    }
+
+    void BR(short instr){
+        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+        short cond_flag = (short) ((instr >> 9) & 0x7);
+//        if(((cond_flag & reg[Registers.Register.R_COND.val()])) != 0)
+//            reg[Registers.Register.R_PC.val()] += pc_offset;
+        if(((cond_flag & reg[Registers.R_COND])) != 0)
+            reg[Registers.R_PC] += pc_offset;
+    }
+
+    void JMP(short instr){
+        short r1 = (short) ((instr >> 6) & 0x7);
+//        reg[Registers.Register.R_PC.val()] = reg[r1];
+        reg[Registers.R_PC] = reg[r1];
+    }
+
+    /** jump register */
+    void JSR(short instr){
+        short long_flag = (short) ((instr >> 11) & 1);
+        reg[Registers.R_R7] = reg[Registers.R_PC];
+        if(long_flag != 0){
+            short long_pc_offset = sign_extend((short) (instr & 0x7FF), 11);
+            reg[Registers.R_PC] = long_pc_offset;
+        }else {
+            short r1 = (short) ((instr >> 6) & 0x7);
+            reg[Registers.R_PC] = reg[r1];
+        }
+    }
+
+    /** load */
+    void LD(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+        reg[r0] = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
+        update_flag(r0);
+    }
+
+    /** load register */
+    void LDR(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short r1 = (short) ((instr >> 6) & 0x7);
+        short offset = sign_extend((short) (instr & 0x3F), 6);
+        reg[r0] = Memory.mem_read(reg[r1] + offset);
+    }
+
+    /** load effective address */
+    void LEA(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+        reg[r0] = (short) (reg[Registers.R_PC] + pc_offset);
+        update_flag(r0);
+    }
+
+    /** store */
+    void ST(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+        Memory.mem_write(reg[Registers.R_PC] + pc_offset, reg[r0]);
+    }
+
+    /** store register */
+    void STR(short instr){
+        short r0 = (short) ((instr >> 9) & 0x7);
+        short r1 = (short) ((instr >> 6) & 0x7);
+        short offset = sign_extend((short) (instr & 0x3F), 6);
+        Memory.mem_write(reg[r1] + offset, reg[r0]);
     }
 }
