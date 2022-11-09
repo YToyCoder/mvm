@@ -3,7 +3,22 @@ package com.silence.vm;
 import java.util.Scanner;
 
 public class Emulator {
-    private short[] reg = new short[Registers.R_COUNT];
+    private int[] reg = new int[Registers.R_COUNT];
+
+    public void setReg(int regAddr, int value){
+        if(debug)
+        System.out.println("set register %d , value %d".formatted(regAddr, value));
+        reg[regAddr] = value;
+    }
+
+    private boolean debug = false;
+    public void Debug(boolean _de){
+        debug = _de;
+    }
+
+    public int getReg(int regAddr){
+        return reg[regAddr];
+    }
 
     /*** add instruction */
     /**  15       12 11     9  8     6  5  4  3  2     0 */
@@ -19,20 +34,22 @@ public class Emulator {
      * 如果bit[5]是0,第二个数据源来自于SR2.
      * 如果是1，第二个数据源来自于imm5
      */
-    private void ADD(short instruction){
-        short r0 = (short) ((instruction >> 9) & 0x7);
-        short r1 = (short) ((instruction >> 6) & 0x7);
-        short imm_flag = (short) ((instruction >> 5) & 0x1);
+    private void ADD(int instruction){
+        if(debug)
+            System.out.println("run instr ADD");
+        int r0 = (instruction >> 9) & 0x7;
+        int r1 = (instruction >> 6) & 0x7;
+        int imm_flag = (instruction >> 5) & 0x1;
         if(imm_flag != 0){
-            short imm5 = sign_extend((short) (instruction & 0x1F), 5);
-            reg[r0] = (short) (reg[r1] + imm5);
+            int imm5 = sign_extend(instruction & 0x1F, 5);
+            reg[r0] =  reg[r1] + imm5;
         }else {
-            short r2 = (short) (instruction & 0x7);
-            reg[r0] = (short) (reg[r1] + reg[r2]);
+            int r2 = instruction & 0x7;
+            reg[r0] = reg[r1] + reg[r2];
         }
         update_flag(r0);
     }
-    short sign_extend(short x, int bit_count){
+    int sign_extend(int x, int bit_count){
         if(((x >> (bit_count - 1)) & 1) == 1)
             // negative number
             // 543210
@@ -42,7 +59,7 @@ public class Emulator {
         return x;
     }
 
-    void update_flag(short r){
+    void update_flag(int r){
         if(reg[r] == 0){ // equal
 //            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_ZRO;
             reg[Registers.R_COND] = ConditionFlags.FL_ZRO;
@@ -62,103 +79,130 @@ public class Emulator {
      * ldi 指令是用于将内存的值装载入寄存器。
      * PCoffset从8位符号扩展到16位，然后将该值与增加的PC相加后得到的地址是内存需要加到内存的数据的地址
      */
-    void LDI(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+    void LDI(int instr){
+        if(debug)
+        System.out.println("run instr LDI");
+        int r0 =  (instr >> 9) & 0x7;
+        int pc_offset = sign_extend(instr & 0x1FF, 9);
 //        reg[r0] = Memory.get(Memory.get(reg[Registers.Register.R_PC.val()] + pc_offset));
         reg[r0] = Memory.mem_read(Memory.mem_read(reg[Registers.R_PC] + pc_offset));
         update_flag(r0);
     }
 
-    void AND(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short r1 = (short) ((instr >> 6) & 0x7);
-        short imm_flag = (short) ((instr >> 5) & 0x1);
+    void AND(int instr){
+        if(debug)
+        System.out.println("run instr AND");
+        int r0 = (instr >> 9) & 0x7;
+        int r1 = (instr >> 6) & 0x7;
+        int imm_flag = (instr >> 5) & 0x1;
         if(imm_flag != 0){
-            short imm5 = sign_extend((short) (instr & 0x1F), 5);
-            reg[r0] = (short) (reg[r1] & imm5);
+            int imm5 = sign_extend(instr & 0x1F, 5);
+            reg[r0] = reg[r1] & imm5;
         }else {
-            short r2 = (short) (instr & 0x7);
-            reg[r0] = (short) (reg[r1] & reg[r2]);
+            int r2 = instr & 0x7;
+            reg[r0] = reg[r1] & reg[r2];
         }
         update_flag(r0);
     }
 
-    void NOT(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short r1 = (short) ((instr >> 6) & 0x7);
-        reg[r0] = (short) ~reg[r1];
+    void NOT(int instr){
+        if(debug)
+        System.out.println("run instr NOT");
+        int r0 = (instr >> 9) & 0x7;
+        int r1 = (instr >> 6) & 0x7;
+        reg[r0] = ~reg[r1];
         update_flag(r0);
     }
 
-    void BR(short instr){
-        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
-        short cond_flag = (short) ((instr >> 9) & 0x7);
-//        if(((cond_flag & reg[Registers.Register.R_COND.val()])) != 0)
-//            reg[Registers.Register.R_PC.val()] += pc_offset;
-        if(((cond_flag & reg[Registers.R_COND])) != 0)
+    void BR(int instr){
+        if(debug)
+        System.out.println("run instr BR");
+        int pc_offset = sign_extend(instr & 0x1FF, 9);
+        int cond_flag = (instr >> 9) & 0x7;
+        if((cond_flag & reg[Registers.R_COND]) != 0)
             reg[Registers.R_PC] += pc_offset;
     }
 
-    void JMP(short instr){
-        short r1 = (short) ((instr >> 6) & 0x7);
+    void JMP(int instr){
+        if(debug)
+        System.out.println("run instr JMP");
+        int r1 = (instr >> 6) & 0x7;
 //        reg[Registers.Register.R_PC.val()] = reg[r1];
         reg[Registers.R_PC] = reg[r1];
     }
 
     /** jump register */
-    void JSR(short instr){
-        short long_flag = (short) ((instr >> 11) & 1);
+    void JSR(int instr){
+        if(debug)
+        System.out.println("run instr JSR");
+        int long_flag = (instr >> 11) & 1;
         reg[Registers.R_R7] = reg[Registers.R_PC];
         if(long_flag != 0){
-            short long_pc_offset = sign_extend((short) (instr & 0x7FF), 11);
+            int long_pc_offset = sign_extend(instr & 0x7FF, 11);
             reg[Registers.R_PC] = long_pc_offset;
         }else {
-            short r1 = (short) ((instr >> 6) & 0x7);
+            int r1 = (instr >> 6) & 0x7;
             reg[Registers.R_PC] = reg[r1];
         }
     }
 
     /** load */
-    void LD(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+    void LD(int instr){
+        if(debug)
+        System.out.println("run instr LD");
+        int r0 = (instr >> 9) & 0x7;
+        int pc_offset = sign_extend( instr & 0x1FF, 9);
         reg[r0] = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
         update_flag(r0);
     }
 
     /** load register */
-    void LDR(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short r1 = (short) ((instr >> 6) & 0x7);
-        short offset = sign_extend((short) (instr & 0x3F), 6);
+    void LDR(int instr){
+        if(debug)
+        System.out.println("run instr LDR");
+        int r0 = (instr >> 9) & 0x7;
+        int r1 = (instr >> 6) & 0x7;
+        int offset = sign_extend( instr & 0x3F, 6);
         reg[r0] = Memory.mem_read(reg[r1] + offset);
     }
 
     /** load effective address */
-    void LEA(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
-        reg[r0] = (short) (reg[Registers.R_PC] + pc_offset);
+    void LEA(int instr){
+        if(debug)
+        System.out.println("run instr LEA");
+        int r0 = (instr >> 9) & 0x7;
+        int pc_offset = sign_extend( instr & 0x1FF, 9);
+        reg[r0] = reg[Registers.R_PC] + pc_offset;
         update_flag(r0);
     }
 
     /** store */
-    void ST(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short pc_offset = sign_extend((short) (instr & 0x1FF), 9);
+    void ST(int instr){
+        if(debug)
+        System.out.println("run instr ST");
+        int r0 = (instr >> 9) & 0x7;
+        int pc_offset = sign_extend( instr & 0x1FF, 9);
         Memory.mem_write(reg[Registers.R_PC] + pc_offset, reg[r0]);
     }
 
+    void STI(int instr){
+        System.out.println("run instr STI");
+        int r0 = (instr >> 9) & 0x7;
+        int pc_offset = sign_extend(instr & 0x1FF, 9);
+        Memory.mem_write(Memory.mem_read(reg[Registers.R_PC] + pc_offset) , reg[r0]);
+    }
+
     /** store register */
-    void STR(short instr){
-        short r0 = (short) ((instr >> 9) & 0x7);
-        short r1 = (short) ((instr >> 6) & 0x7);
-        short offset = sign_extend((short) (instr & 0x3F), 6);
+    void STR(int instr){
+        if(debug)
+        System.out.println("run instr STR");
+        int r0 = (instr >> 9) & 0x7;
+        int r1 = (instr >> 6) & 0x7;
+        int offset = sign_extend(instr & 0x3F, 6);
         Memory.mem_write(reg[r1] + offset, reg[r0]);
     }
 
-    void trap(short instr){
+    void trap(int instr){
         reg[Registers.R_R7] = reg[Registers.R_PC];
         switch (instr & 0xFF){
             case TrapCodes.TRAP_GETC -> trap_getc();
@@ -171,10 +215,12 @@ public class Emulator {
     }
 
     void trap_puts(){
-        short c = (short) (0 + reg[Registers.R_R0]);
+        int c = reg[Registers.R_R0];
         StringBuilder builder = new StringBuilder();
-        while(Memory.mem_read(c) != 0){
-            builder.append((char) Memory.mem_read(c));
+        char ch ;
+        while((ch = (char) Memory.mem_read(c)) != 0){
+            builder.append(ch);
+            c++;
         }
         System.out.println(builder);
     }
@@ -182,7 +228,7 @@ public class Emulator {
     void trap_getc(){
         Scanner scanner = new Scanner(System.in);
         reg[Registers.R_R0] = scanner.nextByte();
-        update_flag((short) Registers.R_R0);
+        update_flag(Registers.R_R0);
     }
 
     void trap_out(){
@@ -194,12 +240,12 @@ public class Emulator {
         Scanner scanner = new Scanner(System.in);
         char c = (char) scanner.nextByte();
         System.out.println(c);
-        reg[Registers.R_R0] = (short) c;
-        update_flag((short) Registers.R_R0);
+        reg[Registers.R_R0] = c;
+        update_flag( Registers.R_R0);
     }
 
     void trap_putsp(){
-        short c = (short) (0 + reg[Registers.R_R0]);
+        int c = 0 + reg[Registers.R_R0];
         StringBuilder builder = new StringBuilder();
         while(Memory.mem_read(c) != 0){
             char char1 = (char) (Memory.mem_read(c) & 0xFF);
@@ -214,5 +260,32 @@ public class Emulator {
 
     void trap_halt(){
         System.out.println("HALT");
+    }
+
+    void run_instruction(int instr){
+        if(debug)
+        System.out.println("instr is %d".formatted(instr));
+        int op = instr >> 12;
+        switch (op){
+            case Opcodes.OP_ADD -> ADD(instr);
+            case Opcodes.OP_AND -> AND(instr);
+            case Opcodes.OP_NOT -> NOT(instr);
+            case Opcodes.OP_BR -> BR(instr);
+            case Opcodes.OP_JMP -> JMP(instr);
+            case Opcodes.OP_JSR -> JSR(instr);
+            case Opcodes.OP_LD -> LD(instr);
+            case Opcodes.OP_LDI -> LDI(instr);
+            case Opcodes.OP_LDR -> LDR(instr);
+            case Opcodes.OP_LEA -> LEA(instr);
+            case Opcodes.OP_ST -> ST(instr);
+            case Opcodes.OP_STI -> STI(instr);
+            case Opcodes.OP_STR -> STR(instr);
+            case Opcodes.OP_TRAP -> trap(instr);
+            default -> {
+                // BAD Opcode
+                System.out.println("bad opcode");
+                System.exit(1);
+            }
+        }
     }
 }

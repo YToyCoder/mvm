@@ -1,5 +1,6 @@
 package com.silence;
 
+import com.silence.vm.VM;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
@@ -7,7 +8,9 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
     public static void main(String[] args) {
-        launch(args);
+//        System.out.println((byte) 234);
+        VM.run(args);
+//        launch(args);
     }
 
     @Override
