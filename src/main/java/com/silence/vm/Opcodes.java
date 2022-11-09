@@ -1,30 +1,20 @@
 package com.silence.vm;
 
 public class Opcodes {
-    public enum Opcode {
-        OP_BR(0), /* branch */
-        OP_ADD(1), /* add */
-        OP_LD(2), /* load */
-        OP_ST(3), /* store */
-        OP_JSR(4), /* jump register */
-        OP_AND(5), /* bitwise and */
-        OP_LDR(6), /* load register */
-        OP_STR(7), /* store register */
-        OP_RTI(8), /* unused */
-        OP_NOT(9), /* bitwise not */
-        OP_LDI(10), /* load indirect */
-        OP_STI(11), /* store indirect */
-        OP_JMP(12), /* jump */
-        OP_RES(13), /* reserved (unused) */
-        OP_LEA(14), /* load effective address */
-        OP_TRAP(15) /* execute trap */
-        ;
-
-        private final int val;
-
-        Opcode(int _val){
-            this.val = _val;
-        }
-
-    }
+    public static final int OP_BR = 0;
+    public static final int OP_ADD = 1; /* add */
+    public static final int OP_LD = 2; /* load */
+    public static final int OP_ST = 3; /* store */
+    public static final int OP_JSR = 4; /* jump register */
+    public static final int OP_AND = 5; /* bitwise and */
+    public static final int OP_LDR = 6; /* load register */
+    public static final int OP_STR = 7; /* store register */
+    public static final int OP_RTI = 8; /* unused */
+    public static final int OP_NOT = 9; /* bitwise not */
+    public static final int OP_LDI = 10; /* load indirect */
+    public static final int OP_STI = 11; /* store indirect */
+    public static final int OP_JMP = 12; /* jump */
+    public static final int OP_RES = 13; /* reserved (unused) */
+    public static final int OP_LEA = 14; /* load effective address */
+    public static final int OP_TRAP = 15; /* execute trap */
 }
