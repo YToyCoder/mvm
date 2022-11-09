@@ -16,7 +16,6 @@ public class VM {
       int origin = merge(buffer.get() , buffer.get());
       if(buffer.hasRemaining())
         System.out.println("origin buffer remaining");
-      System.out.println("origin is " + origin);
       int max_read_16bit = (Memory.MEMORY_MAX - origin);
       buffer = ByteBuffer.allocate(max_read_16bit * 2);
       byteChannel.read(buffer);
@@ -30,7 +29,6 @@ public class VM {
         //      one        two
         count++;
         int merged = merge(one, two);
-        System.out.printf("%d ", merged);
         Memory.mem_write(origin + i, merged);
         if(count % 10 == 0) System.out.println();
       }
@@ -63,7 +61,6 @@ public class VM {
   static int merge(byte one, byte two){
     int convertedOne = (one & 0xff);
     int convertedTwo = two & 0xff;
-    System.out.printf(" %d %d ", convertedOne, convertedTwo);
     return (convertedOne << 8) | convertedTwo;
   }
 
@@ -76,7 +73,6 @@ public class VM {
     }
 
     for (int j=0; j < args.length; j++){
-      System.out.println("loading file %s ...".formatted(args[j]));
       read_image(args[j]);
     }
 

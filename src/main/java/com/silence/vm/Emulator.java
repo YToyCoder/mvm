@@ -61,13 +61,10 @@ public class Emulator {
 
     void update_flag(int r){
         if(reg[r] == 0){ // equal
-//            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_ZRO;
             reg[Registers.R_COND] = ConditionFlags.FL_ZRO;
-        }else if(reg[r] >> 15 == 1){ // negative
-//            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_NEG;
+        }else if(reg[r] >> 15 != 0){ // negative
             reg[Registers.R_COND] = ConditionFlags.FL_NEG;
         }else // positive
-//            reg[Registers.Register.R_COND.val()] = ConditionFlags.FL_POS;
             reg[Registers.R_COND] = ConditionFlags.FL_POS;
     }
 
