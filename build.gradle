@@ -1,9 +1,17 @@
 plugins {
     id 'java'
+    id "application"
+    id "org.openjfx.javafxplugin" version "0.0.9"
+}
+
+javafx {
+    version = "19"
+    modules = ["javafx.controls"]
 }
 
 group 'com.silence'
 version '1.0-SNAPSHOT'
+application.mainClassName "com.silence.Main"
 
 repositories {
     mavenCentral()
