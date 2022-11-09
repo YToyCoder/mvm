@@ -1,10 +1,25 @@
 package com.silence;
 
-public class Main {
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.layout.BorderPane;
+import javafx.stage.Stage;
+
+public class Main extends Application {
     public static void main(String[] args) {
-        System.out.println("Hello world!");
-        int a = 0b10111;
-        System.out.println("%s - %s".formatted(Integer.toBinaryString(a), Integer.toBinaryString(a | (0xFFFF << 5))));
-        System.out.println("0x7 is %s".formatted(Integer.toBinaryString(0x7)));
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        try {
+            BorderPane root = new BorderPane();
+            Scene scene = new Scene(root, 400, 400);
+            primaryStage.setScene(scene);
+            primaryStage.setTitle("Virtual Machine");
+            primaryStage.show();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 }
