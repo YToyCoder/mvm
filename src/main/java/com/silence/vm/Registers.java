@@ -13,4 +13,8 @@ public class Registers {
     public static final int R_COND = 9;
     public static final int R_COUNT = 10;
 
+    /** Memory Mapped Registers */
+    public static final int MR_KBSR = 0xFE00; /** keyboard status */
+    public static final int MR_KBDR = 0xFE02; /** keyboard data */
+
 }
