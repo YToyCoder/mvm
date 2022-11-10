@@ -8,26 +8,52 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class VM {
+  private static boolean debug = false;
+
+  public static void Debug(boolean _de){
+    debug = _de;
+  }
+
   static void read_image_file(ReadableByteChannel byteChannel) {
+    int record;
     ByteBuffer buffer = ByteBuffer.allocate(2);
     try {
       byteChannel.read(buffer);
       buffer.flip();
-      int origin = merge(buffer.get() , buffer.get());
+      int origin = record = merge(buffer.get() , buffer.get());
       if(buffer.hasRemaining())
         System.out.println("origin buffer remaining");
       int max_read_16bit = (Memory.MEMORY_MAX - origin);
       buffer = ByteBuffer.allocate(max_read_16bit * 2);
-      byteChannel.read(buffer);
-      buffer.flip();
-      for(int i=0; i<max_read_16bit && buffer.hasRemaining(); i++){
-        byte one = buffer.get();
-        byte two = buffer.get();
-        // 15         8 7         0
-        // |<- 8 bit ->|<- 8 bit ->|
-        //      one        two
-        int merged = merge(one, two);
-        Memory.mem_write(origin + i, merged);
+      int count = 0;
+      while(byteChannel.read(buffer) > 0){
+//        System.out.println("read 16bit size is %d %d".formatted(temp % 2, temp));
+        buffer.flip();
+        while (buffer.hasRemaining()){
+          byte one = buffer.get();
+          byte two = buffer.get();
+          // 15         8 7         0
+          // |<- 8 bit ->|<- 8 bit ->|
+          //      one        two
+          int merged = merge(one, two);
+          if (debug){
+            count++;
+            System.out.printf("%d ", merged);
+            if(count % 10 == 0){
+              System.out.println();
+            }
+          }
+          Memory.mem_write(origin++, merged);
+        }
+        buffer.clear();
+      }
+      if(debug){
+        System.out.println("total read 16bit is %d".formatted(count));
+        for(int i=0; i + record<Memory.MEMORY_MAX && i<count; i++){
+          if(i % 10 == 0)
+            System.out.println();
+          System.out.printf("%d ", Memory.mem_read(i + record));
+        }
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -75,6 +101,7 @@ public class VM {
 
     // setup
     Emulator emulator = new Emulator();
+//    emulator.Debug(true);
 
     // set cond flag
     emulator.setReg( Registers.R_COND, ConditionFlags.FL_ZRO);
@@ -86,7 +113,7 @@ public class VM {
     boolean running = true;
     while (running){
       int instr = Memory.mem_read(emulator.getReg(Registers.R_PC));
-      emulator.setReg(Registers.R_PC, emulator.getReg(Registers.R_PC) + 1);
+      emulator.pcIncrease();
       emulator.run_instruction(instr);
     }
     System.out.println("lc3 run exit");

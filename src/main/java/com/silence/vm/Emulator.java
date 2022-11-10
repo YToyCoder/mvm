@@ -1,5 +1,8 @@
 package com.silence.vm;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Scanner;
 
 public class Emulator {
@@ -7,8 +10,12 @@ public class Emulator {
 
     public void setReg(int regAddr, int value){
         if(debug)
-        System.out.println("set register %d , value %d".formatted(regAddr, value));
+            System.out.println("set register %d , value %d".formatted(regAddr, value));
         reg[regAddr] = value;
+    }
+
+    public void pcIncrease(){
+        reg[Registers.R_PC]++;
     }
 
     private boolean debug = false;
@@ -55,7 +62,8 @@ public class Emulator {
             // 543210
             // 111111
             // 100000
-            x |= (0xFFFF << bit_count);
+            // int has 4 byte, short has 2 byte
+            x |= (0xFFFFFFFF << bit_count);
         return x;
     }
 
@@ -78,17 +86,16 @@ public class Emulator {
      */
     void LDI(int instr){
         if(debug)
-        System.out.println("run instr LDI");
+            System.out.println("run instr LDI");
         int r0 =  (instr >> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
-//        reg[r0] = Memory.get(Memory.get(reg[Registers.Register.R_PC.val()] + pc_offset));
         reg[r0] = Memory.mem_read(Memory.mem_read(reg[Registers.R_PC] + pc_offset));
         update_flag(r0);
     }
 
     void AND(int instr){
         if(debug)
-        System.out.println("run instr AND");
+            System.out.println("run instr AND");
         int r0 = (instr >> 9) & 0x7;
         int r1 = (instr >> 6) & 0x7;
         int imm_flag = (instr >> 5) & 0x1;
@@ -104,7 +111,7 @@ public class Emulator {
 
     void NOT(int instr){
         if(debug)
-        System.out.println("run instr NOT");
+            System.out.println("run instr NOT");
         int r0 = (instr >> 9) & 0x7;
         int r1 = (instr >> 6) & 0x7;
         reg[r0] = ~reg[r1];
@@ -113,7 +120,7 @@ public class Emulator {
 
     void BR(int instr){
         if(debug)
-        System.out.println("run instr BR");
+            System.out.println("run instr BR");
         int pc_offset = sign_extend(instr & 0x1FF, 9);
         int cond_flag = (instr >> 9) & 0x7;
         if((cond_flag & reg[Registers.R_COND]) != 0)
@@ -122,31 +129,30 @@ public class Emulator {
 
     void JMP(int instr){
         if(debug)
-        System.out.println("run instr JMP");
+            System.out.println("run instr JMP");
         int r1 = (instr >> 6) & 0x7;
-//        reg[Registers.Register.R_PC.val()] = reg[r1];
         reg[Registers.R_PC] = reg[r1];
     }
 
     /** jump register */
     void JSR(int instr){
         if(debug)
-        System.out.println("run instr JSR");
+            System.out.println("run instr JSR");
         int long_flag = (instr >> 11) & 1;
         reg[Registers.R_R7] = reg[Registers.R_PC];
         if(long_flag != 0){
             int long_pc_offset = sign_extend(instr & 0x7FF, 11);
-            reg[Registers.R_PC] += long_pc_offset;
+            reg[Registers.R_PC] += long_pc_offset; /** JSR */
         }else {
             int r1 = (instr >> 6) & 0x7;
-            reg[Registers.R_PC] = reg[r1];
+            reg[Registers.R_PC] = reg[r1]; /** JSRR */
         }
     }
 
     /** load */
     void LD(int instr){
         if(debug)
-        System.out.println("run instr LD");
+            System.out.println("run instr LD");
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
         reg[r0] = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
@@ -156,7 +162,7 @@ public class Emulator {
     /** load register */
     void LDR(int instr){
         if(debug)
-        System.out.println("run instr LDR");
+            System.out.println("run instr LDR");
         int r0 = (instr >> 9) & 0x7;
         int r1 = (instr >> 6) & 0x7;
         int offset = sign_extend( instr & 0x3F, 6);
@@ -167,7 +173,7 @@ public class Emulator {
     /** load effective address */
     void LEA(int instr){
         if(debug)
-        System.out.println("run instr LEA");
+            System.out.println("run instr LEA");
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
         reg[r0] = reg[Registers.R_PC] + pc_offset;
@@ -177,14 +183,15 @@ public class Emulator {
     /** store */
     void ST(int instr){
         if(debug)
-        System.out.println("run instr ST");
+            System.out.println("run instr ST");
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
         Memory.mem_write(reg[Registers.R_PC] + pc_offset, reg[r0]);
     }
 
     void STI(int instr){
-        System.out.println("run instr STI");
+        if(debug)
+            System.out.println("run instr STI");
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
         Memory.mem_write(Memory.mem_read(reg[Registers.R_PC] + pc_offset) , reg[r0]);
@@ -193,10 +200,15 @@ public class Emulator {
     /** store register */
     void STR(int instr){
         if(debug)
-        System.out.println("run instr STR");
+            System.out.println("run instr STR");
         int r0 = (instr >> 9) & 0x7;
         int r1 = (instr >> 6) & 0x7;
         int offset = sign_extend(instr & 0x3F, 6);
+        if(debug) {
+            System.out.println(
+                "in STR ,r1 is register %d, r1's value is %d, offset is %d, instr is %s"
+                .formatted(r1, reg[r1], offset,Integer.toBinaryString(instr)));
+        }
         Memory.mem_write(reg[r1] + offset, reg[r0]);
     }
 
@@ -220,20 +232,26 @@ public class Emulator {
             builder.append(ch);
             c++;
         }
-        System.out.println(builder);
+        System.out.print(builder);
     }
 
     void trap_getc(){
-        Scanner scanner = new Scanner(System.in);
-        reg[Registers.R_R0] = scanner.nextByte();
+        char c = 0;
+        try {
+            c = (char) new BufferedReader(new InputStreamReader(System.in)).read();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        reg[Registers.R_R0] = c;
         update_flag(Registers.R_R0);
     }
 
     void trap_out(){
-        System.out.println((char) reg[Registers.R_R0]);
+        System.out.print((char) reg[Registers.R_R0]);
     }
 
     void trap_in(){
+        System.out.println("execute trap_in");
         System.out.println("Enter a character : ");
         Scanner scanner = new Scanner(System.in);
         char c = (char) scanner.nextByte();
