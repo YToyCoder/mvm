@@ -1,12 +1,16 @@
 package com.silence.vm;
 
+import com.silence.app.KeyBoard;
+import com.silence.app.KeyBoardStatusAware;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Scanner;
 
-public class Emulator {
+public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     private int[] reg = new int[Registers.R_COUNT];
+    private final ArrayMemory memory = new ArrayMemory();
 
     public void setReg(int regAddr, int value){
         if(debug)
@@ -74,7 +78,7 @@ public class Emulator {
     void update_flag(int r){
         if(reg[r] == 0){ // equal
             reg[Registers.R_COND] = ConditionFlags.FL_ZRO;
-        }else if(reg[r] >> 15 != 0){ // negative
+        }else if((reg[r] >> 15) != 0){ // negative
             reg[Registers.R_COND] = ConditionFlags.FL_NEG;
         }else // positive
             reg[Registers.R_COND] = ConditionFlags.FL_POS;
@@ -93,14 +97,14 @@ public class Emulator {
             System.out.println("run instr LDI");
         int r0 =  (instr >> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
-        int load_data_loc = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
+        int load_data_loc = memory.mem_read(reg[Registers.R_PC] + pc_offset);
         if(debug){
             System.out.println(
                 "register is %d, pc value is  %d, pc_offset is %d, load_data_loc in memory is %d"
                     .formatted(r0, reg[Registers.R_PC], pc_offset, load_data_loc)
             );
         }
-        reg[r0] = Memory.mem_read(load_data_loc);
+        reg[r0] = memory.mem_read(load_data_loc);
         update_flag(r0);
     }
 
@@ -141,8 +145,8 @@ public class Emulator {
                     reg[Registers.R_COND],
                     cond_flag & reg[Registers.R_COND],
                     pc_offset,
-                    Integer.toBinaryString( Memory.mem_read(reg[Registers.R_PC] + 1) ),
-                    Integer.toBinaryString( Memory.mem_read(reg[Registers.R_PC] + pc_offset) )
+                    Integer.toBinaryString( memory.mem_read(reg[Registers.R_PC] + 1) ),
+                    Integer.toBinaryString( memory.mem_read(reg[Registers.R_PC] + pc_offset) )
                 )
             );
         }
@@ -178,7 +182,7 @@ public class Emulator {
             System.out.println("run instr LD");
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
-        reg[r0] = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
+        reg[r0] = memory.mem_read(reg[Registers.R_PC] + pc_offset);
         update_flag(r0);
     }
 
@@ -189,7 +193,7 @@ public class Emulator {
         int r0 = (instr >> 9) & 0x7;
         int r1 = (instr >> 6) & 0x7;
         int offset = sign_extend( instr & 0x3F, 6);
-        reg[r0] = Memory.mem_read(reg[r1] + offset);
+        reg[r0] = memory.mem_read(reg[r1] + offset);
         update_flag(r0);
     }
 
@@ -209,33 +213,32 @@ public class Emulator {
             System.out.println("run instr ST");
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
-        Memory.mem_write(reg[Registers.R_PC] + pc_offset, reg[r0]);
+        memory.mem_write(reg[Registers.R_PC] + pc_offset, reg[r0]);
     }
 
     void STI(int instr){
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
-        int write_location = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
+        int write_location = memory.mem_read(reg[Registers.R_PC] + pc_offset);
         if(debug){
-            System.out.print("run instr STI ");
+            System.out.print("run instr STI : ");
             System.out.println("write from register %d, write to memory %d, pc is %d, offset is %d".formatted(r0, write_location, reg[Registers.R_PC], pc_offset));
         }
-        Memory.mem_write( write_location, reg[r0] );
+        memory.mem_write( write_location, reg[r0] );
     }
 
     /** store register */
     void STR(int instr){
-        if(debug)
-            System.out.println("run instr STR");
         int r0 = (instr >> 9) & 0x7;
         int r1 = (instr >> 6) & 0x7;
         int offset = sign_extend(instr & 0x3F, 6);
         if(debug) {
+            System.out.print("run instr STR : ");
             System.out.println(
                 "in STR ,r1 is register %d, r1's value is %d, offset is %d, instr is %s"
                 .formatted(r1, reg[r1], offset,Integer.toBinaryString(instr)));
         }
-        Memory.mem_write(reg[r1] + offset, reg[r0]);
+        memory.mem_write(reg[r1] + offset, reg[r0]);
     }
 
     void trap(int instr){
@@ -252,52 +255,56 @@ public class Emulator {
 
     void trap_puts(){
         int c = reg[Registers.R_R0];
-        StringBuilder builder = new StringBuilder();
+//        StringBuilder builder = new StringBuilder();
         char ch ;
-        while((ch = (char) Memory.mem_read(c)) != 0){
-            builder.append(ch);
+        while((ch = (char) memory.mem_read(c)) != 0){
+//            builder.append(ch);
+            KeyBoard.put(ch);
             c++;
         }
-        System.out.print(builder);
+//        System.out.print(builder);
+        KeyBoard.flush(Std.stdout());
     }
 
     void trap_getc(){
-        char c = 0;
-        try {
-            c = (char) new BufferedReader(new InputStreamReader(System.in)).read();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        reg[Registers.R_R0] = c;
+        reg[Registers.R_R0] = KeyBoard.getc();
         update_flag(Registers.R_R0);
     }
 
     void trap_out(){
-        System.out.print((char) reg[Registers.R_R0]);
+        KeyBoard.put((char) reg[Registers.R_R0]);
+        KeyBoard.flush(Std.stdout());
     }
 
     void trap_in(){
-        System.out.println("execute trap_in");
+        if(debug)
+            System.out.println("execute trap_in");
         System.out.println("Enter a character : ");
-        Scanner scanner = new Scanner(System.in);
-        char c = (char) scanner.nextByte();
-        System.out.print(c);
+//        Scanner scanner = new Scanner(System.in);
+//        char c = (char) scanner.nextByte();
+//        System.out.print(c);
+        char c = KeyBoard.getc();
+        KeyBoard.put(c);
+        KeyBoard.flush(Std.stdout());
         reg[Registers.R_R0] = c;
         update_flag( Registers.R_R0);
     }
 
     void trap_putsp(){
-        int c = 0 + reg[Registers.R_R0];
-        StringBuilder builder = new StringBuilder();
-        while(Memory.mem_read(c) != 0){
-            char char1 = (char) (Memory.mem_read(c) & 0xFF);
-            builder.append(char1);
-            char char2 = (char) (Memory.mem_read(c) >> 8);
+        int put_chars = reg[Registers.R_R0];
+//        StringBuilder builder = new StringBuilder();
+        while(memory.mem_read(put_chars) != 0){
+            char char1 = (char) (memory.mem_read(put_chars) & 0xFF);
+//            builder.append(char1);
+            KeyBoard.put(char1);
+            char char2 = (char) (memory.mem_read(put_chars) >> 8);
             if(char2 != 0)
-                builder.append(char2);
-            ++c;
+//                builder.append(char2);
+                KeyBoard.put(char2);
+            ++put_chars;
         }
-        System.out.print(builder);
+        KeyBoard.flush(Std.stdout());
+//        System.out.print(builder);
     }
 
     void trap_halt(){
@@ -309,7 +316,7 @@ public class Emulator {
         if(debug){
             System.out.println("*".repeat(10) + " start run instr %s".formatted( Integer.toBinaryString( instr )) + "*".repeat(10));
         }
-        int op = instr >> 12;
+        int op = instr >>> 12;
         switch (op){
             case Opcodes.OP_ADD -> ADD(instr);
             case Opcodes.OP_AND -> AND(instr);
@@ -333,5 +340,30 @@ public class Emulator {
         }
         if(debug)
             System.out.println("%s end run instr %s %s".formatted("*".repeat(10), Integer.toBinaryString(instr), "*".repeat(10)));
+    }
+
+    @Override
+    public void mem_write(int address, int value) {
+        memory.mem_write(address, value);
+    }
+
+    @Override
+    public int mem_read(int address) {
+        return memory.mem_read(address);
+    }
+
+    @Override
+    public void execute(int instr) {
+        run_instruction(instr);
+    }
+
+    @Override
+    public void awareKeyPressing() {
+        memory.setKeyPressing(true);
+    }
+
+    @Override
+    public void awareKeyReleasing() {
+        memory.setKeyPressing(false);
     }
 }

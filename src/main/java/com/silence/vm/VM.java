@@ -14,7 +14,7 @@ public class VM {
     debug = _de;
   }
 
-  static void read_image_file(ReadableByteChannel byteChannel) {
+  static void read_image_file(ReadableByteChannel byteChannel, Emulator emulator) {
     int record;
     ByteBuffer buffer = ByteBuffer.allocate(2);
     try {
@@ -23,7 +23,7 @@ public class VM {
       int origin = record = merge(buffer.get() , buffer.get());
       if(buffer.hasRemaining())
         System.out.println("origin buffer remaining");
-      int max_read_16bit = (Memory.MEMORY_MAX - origin);
+      int max_read_16bit = (ArrayMemory.MEMORY_MAX - origin);
       buffer = ByteBuffer.allocate(max_read_16bit * 2);
       int count = 0;
       while(byteChannel.read(buffer) > 0){
@@ -43,16 +43,16 @@ public class VM {
               System.out.println();
             }
           }
-          Memory.mem_write(origin++, merged);
+          emulator.mem_write(origin++, merged);
         }
         buffer.clear();
       }
       if(debug){
         System.out.println("total read 16bit is %d".formatted(count));
-        for(int i=0; i + record<Memory.MEMORY_MAX && i<count; i++){
+        for(int i = 0; i + record< ArrayMemory.MEMORY_MAX && i<count; i++){
           if(i % 10 == 0)
             System.out.println();
-          System.out.printf("%d ", Memory.mem_read(i + record));
+          System.out.printf("%d ", emulator.mem_read(i + record));
         }
       }
     } catch (IOException e) {
@@ -60,7 +60,7 @@ public class VM {
     }
   }
 
-  static void read_image(String file_name){
+  static void read_image(String file_name, Emulator emulator){
     if(!Files.exists(Path.of(file_name))){
       System.err.println("can't find file %s".formatted(file_name));
       System.exit(1);
@@ -71,7 +71,7 @@ public class VM {
           RandomAccessFile file = new RandomAccessFile(file_name, "rw");
           ReadableByteChannel channel = file.getChannel();
       ) {
-        read_image_file(channel);
+        read_image_file(channel, emulator);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -88,7 +88,7 @@ public class VM {
   }
 
   static final short PC_START = 0x3000;
-  public static void run(String[] args){
+  public static void run(String[] args, Emulator emulator){
     // load arguments
     if(args.length < 1){
       System.out.println("lc3 [image-file1] ...");
@@ -96,11 +96,10 @@ public class VM {
     }
 
     for (int j=0; j < args.length; j++){
-      read_image(args[j]);
+      read_image(args[j], emulator);
     }
 
     // setup
-    Emulator emulator = new Emulator();
 //    emulator.Debug(true);
 
     // set cond flag
@@ -112,9 +111,9 @@ public class VM {
 
     boolean running = true;
     while (running){
-      int instr = Memory.mem_read(emulator.getReg(Registers.R_PC));
+      int instr = emulator.mem_read(emulator.getReg(Registers.R_PC));
       emulator.pcIncrease();
-      emulator.run_instruction(instr);
+      emulator.execute(instr);
     }
     System.out.println("lc3 run exit");
 
