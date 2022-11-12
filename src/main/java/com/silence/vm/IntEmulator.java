@@ -3,12 +3,8 @@ package com.silence.vm;
 import com.silence.app.KeyBoard;
 import com.silence.app.KeyBoardStatusAware;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Scanner;
 
-public class Emulator implements Memory, CPU, KeyBoardStatusAware {
+public class IntEmulator implements Memory, CPU, KeyBoardStatusAware {
     private int[] reg = new int[Registers.R_COUNT];
     private final ArrayMemory memory = new ArrayMemory();
 
@@ -46,9 +42,9 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
      * 如果是1，第二个数据源来自于imm5
      */
     private void ADD(int instruction){
-        int r0 = (instruction >> 9) & 0x7;
-        int r1 = (instruction >> 6) & 0x7;
-        int imm_flag = (instruction >> 5) & 0x1;
+        int r0 = (instruction >>> 9) & 0x7;
+        int r1 = (instruction >>> 6) & 0x7;
+        int imm_flag = (instruction >>> 5) & 0x1;
         if(debug){
             System.out.print("run instr ADD : ");
             System.out.print("destination register %d, first register is %d , value is %d,".formatted(r0, r1, reg[r1]));
@@ -65,7 +61,7 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
         update_flag(r0);
     }
     int sign_extend(int x, int bit_count){
-        if(((x >> (bit_count - 1)) & 1) != 0)
+        if(((x >>> (bit_count - 1)) & 1) != 0)
             // negative number
             // 543210
             // 111111
@@ -78,7 +74,7 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void update_flag(int r){
         if(reg[r] == 0){ // equal
             reg[Registers.R_COND] = ConditionFlags.FL_ZRO;
-        }else if((reg[r] >> 15) != 0){ // negative
+        }else if((reg[r] >>> 15) != 0){ // negative
             reg[Registers.R_COND] = ConditionFlags.FL_NEG;
         }else // positive
             reg[Registers.R_COND] = ConditionFlags.FL_POS;
@@ -95,7 +91,7 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void LDI(int instr){
         if(debug)
             System.out.println("run instr LDI");
-        int r0 =  (instr >> 9) & 0x7;
+        int r0 =  (instr >>> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
         int load_data_loc = memory.mem_read(reg[Registers.R_PC] + pc_offset);
         if(debug){
@@ -111,9 +107,9 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void AND(int instr){
         if(debug)
             System.out.println("run instr AND");
-        int r0 = (instr >> 9) & 0x7;
-        int r1 = (instr >> 6) & 0x7;
-        int imm_flag = (instr >> 5) & 0x1;
+        int r0 = (instr >>> 9) & 0x7;
+        int r1 = (instr >>> 6) & 0x7;
+        int imm_flag = (instr >>> 5) & 0x1;
         if(imm_flag != 0){
             int imm5 = sign_extend(instr & 0x1F, 5);
             reg[r0] = reg[r1] & imm5;
@@ -127,15 +123,15 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void NOT(int instr){
         if(debug)
             System.out.println("run instr NOT");
-        int r0 = (instr >> 9) & 0x7;
-        int r1 = (instr >> 6) & 0x7;
+        int r0 = (instr >>> 9) & 0x7;
+        int r1 = (instr >>> 6) & 0x7;
         reg[r0] = ~reg[r1];
         update_flag(r0);
     }
 
     void BR(int instr){
         int pc_offset = sign_extend(instr & 0x1FF, 9);
-        int cond_flag = (instr >> 9) & 0x7;
+        int cond_flag = (instr >>> 9) & 0x7;
         if(debug){
             System.out.print("run instr BR : ");
             System.out.println(
@@ -157,7 +153,7 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void JMP(int instr){
         if(debug)
             System.out.println("run instr JMP");
-        int r1 = (instr >> 6) & 0x7;
+        int r1 = (instr >>> 6) & 0x7;
         reg[Registers.R_PC] = reg[r1];
     }
 
@@ -165,7 +161,7 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void JSR(int instr){
         if(debug)
             System.out.println("run instr JSR");
-        int long_flag = (instr >> 11) & 1;
+        int long_flag = (instr >>> 11) & 1;
         reg[Registers.R_R7] = reg[Registers.R_PC];
         if(long_flag != 0){
             int long_pc_offset = sign_extend(instr & 0x7FF, 11);
@@ -180,7 +176,7 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void LD(int instr){
         if(debug)
             System.out.println("run instr LD");
-        int r0 = (instr >> 9) & 0x7;
+        int r0 = (instr >>> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
         reg[r0] = memory.mem_read(reg[Registers.R_PC] + pc_offset);
         update_flag(r0);
@@ -190,8 +186,8 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void LDR(int instr){
         if(debug)
             System.out.println("run instr LDR");
-        int r0 = (instr >> 9) & 0x7;
-        int r1 = (instr >> 6) & 0x7;
+        int r0 = (instr >>> 9) & 0x7;
+        int r1 = (instr >>> 6) & 0x7;
         int offset = sign_extend( instr & 0x3F, 6);
         reg[r0] = memory.mem_read(reg[r1] + offset);
         update_flag(r0);
@@ -201,7 +197,7 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void LEA(int instr){
         if(debug)
             System.out.println("run instr LEA");
-        int r0 = (instr >> 9) & 0x7;
+        int r0 = (instr >>> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
         reg[r0] = reg[Registers.R_PC] + pc_offset;
         update_flag(r0);
@@ -211,13 +207,13 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
     void ST(int instr){
         if(debug)
             System.out.println("run instr ST");
-        int r0 = (instr >> 9) & 0x7;
+        int r0 = (instr >>> 9) & 0x7;
         int pc_offset = sign_extend( instr & 0x1FF, 9);
         memory.mem_write(reg[Registers.R_PC] + pc_offset, reg[r0]);
     }
 
     void STI(int instr){
-        int r0 = (instr >> 9) & 0x7;
+        int r0 = (instr >>> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
         int write_location = memory.mem_read(reg[Registers.R_PC] + pc_offset);
         if(debug){
@@ -229,8 +225,8 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
 
     /** store register */
     void STR(int instr){
-        int r0 = (instr >> 9) & 0x7;
-        int r1 = (instr >> 6) & 0x7;
+        int r0 = (instr >>> 9) & 0x7;
+        int r1 = (instr >>> 6) & 0x7;
         int offset = sign_extend(instr & 0x3F, 6);
         if(debug) {
             System.out.print("run instr STR : ");
@@ -339,21 +335,21 @@ public class Emulator implements Memory, CPU, KeyBoardStatusAware {
             }
         }
         if(debug)
-            System.out.println("%s end run instr %s %s".formatted("*".repeat(10), Integer.toBinaryString(instr), "*".repeat(10)));
+            System.out.printf("%s end run instr %s %s%n", "*".repeat(10), Integer.toBinaryString(instr), "*".repeat(10));
     }
 
     @Override
-    public void mem_write(int address, int value) {
+    public void mem_write(char address,char value) {
         memory.mem_write(address, value);
     }
 
     @Override
-    public int mem_read(int address) {
+    public char mem_read(char address) {
         return memory.mem_read(address);
     }
 
     @Override
-    public void execute(int instr) {
+    public void execute(char instr) {
         run_instruction(instr);
     }
 

@@ -5,5 +5,5 @@ public interface CPU {
    * run one instruction
    * @param instr
    */
-  void execute(int instr);
+  void execute(char instr);
 }

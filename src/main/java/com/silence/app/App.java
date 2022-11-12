@@ -1,11 +1,11 @@
 package com.silence.app;
 
-import com.silence.vm.Emulator;
+import com.silence.vm.IntEmulator;
 
 public abstract class App {
-  Emulator emulator;
+  IntEmulator emulator;
 
-  public App(Emulator emulator) {
+  public App(IntEmulator emulator) {
     this.emulator = emulator;
   }
 

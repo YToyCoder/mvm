@@ -14,20 +14,19 @@ public class VM {
     debug = _de;
   }
 
-  static void read_image_file(ReadableByteChannel byteChannel, Emulator emulator) {
-    int record;
+  static void read_image_file(ReadableByteChannel byteChannel, Memory emulator) {
+    char record;
     ByteBuffer buffer = ByteBuffer.allocate(2);
     try {
       byteChannel.read(buffer);
       buffer.flip();
-      int origin = record = merge(buffer.get() , buffer.get());
+      char origin = record = merge(buffer.get() , buffer.get());
       if(buffer.hasRemaining())
         System.out.println("origin buffer remaining");
       int max_read_16bit = (ArrayMemory.MEMORY_MAX - origin);
       buffer = ByteBuffer.allocate(max_read_16bit * 2);
       int count = 0;
       while(byteChannel.read(buffer) > 0){
-//        System.out.println("read 16bit size is %d %d".formatted(temp % 2, temp));
         buffer.flip();
         while (buffer.hasRemaining()){
           byte one = buffer.get();
@@ -43,7 +42,7 @@ public class VM {
               System.out.println();
             }
           }
-          emulator.mem_write(origin++, merged);
+          emulator.mem_write(origin++, (char) merged);
         }
         buffer.clear();
       }
@@ -52,7 +51,7 @@ public class VM {
         for(int i = 0; i + record< ArrayMemory.MEMORY_MAX && i<count; i++){
           if(i % 10 == 0)
             System.out.println();
-          System.out.printf("%d ", emulator.mem_read(i + record));
+          System.out.printf("%d ", emulator.mem_read((char) (i + record)));
         }
       }
     } catch (IOException e) {
@@ -60,7 +59,7 @@ public class VM {
     }
   }
 
-  static void read_image(String file_name, Emulator emulator){
+  static void read_image(String file_name, Memory emulator){
     if(!Files.exists(Path.of(file_name))){
       System.err.println("can't find file %s".formatted(file_name));
       System.exit(1);
@@ -81,14 +80,14 @@ public class VM {
   // 15         8 7         0
   // |<- 8 bit ->|<- 8 bit ->|
   //      one        two
-  static int merge(byte one, byte two){
-    int convertedOne = (one & 0xff);
-    int convertedTwo = two & 0xff;
-    return (convertedOne << 8) | convertedTwo;
+  static char merge(byte one, byte two){
+    char convertedOne = (char) (one & 0xff);
+    char convertedTwo = (char) (two & 0xff);
+    return (char) ((convertedOne << 8) | convertedTwo);
   }
 
   static final short PC_START = 0x3000;
-  public static void run(String[] args, Emulator emulator){
+  public static void run(String[] args, IntEmulator emulator){
     // load arguments
     if(args.length < 1){
       System.out.println("lc3 [image-file1] ...");
@@ -111,7 +110,7 @@ public class VM {
 
     boolean running = true;
     while (running){
-      int instr = emulator.mem_read(emulator.getReg(Registers.R_PC));
+      char instr = emulator.mem_read((char) emulator.getReg(Registers.R_PC));
       emulator.pcIncrease();
       emulator.execute(instr);
     }

@@ -1,9 +1,8 @@
 package com.silence;
 
 import com.silence.app.KeyBoard;
-import com.silence.vm.Emulator;
+import com.silence.vm.IntEmulator;
 import com.silence.vm.Std;
-import com.silence.vm.Utils;
 import com.silence.vm.VM;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -28,12 +27,12 @@ public class Main extends Application {
             Std.setStdout(System.out::print);
             root.setCenter(text);
             Scene scene = new Scene(root, 400, 400);
-            Emulator emulator = new Emulator();
+            IntEmulator emulator = new IntEmulator();
 //            emulator.Debug(true);
             scene.setOnKeyPressed(event -> {
                 text.setText("press " + event.getCharacter() + " : " + event.getText());
 //                KeyBoard.c =  event.getText().toLowerCase().charAt(0);
-                KeyBoard.c = 'y';
+                KeyBoard.c = event.getCode().getChar().toLowerCase().charAt(0);
                 emulator.awareKeyPressing();
                 emulator.awareKeyReleasing();
             });

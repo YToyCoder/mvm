@@ -1,6 +1,7 @@
 package com.silence.vm;
 
 public interface Memory {
-  void mem_write(int address, int value);
-  int mem_read(int address);
+  int MEMORY_MAX = 1 << 16;
+  void mem_write(char address, char value);
+  char mem_read(char address);
 }
