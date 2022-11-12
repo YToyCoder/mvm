@@ -42,16 +42,20 @@ public class Emulator {
      * 如果是1，第二个数据源来自于imm5
      */
     private void ADD(int instruction){
-        if(debug)
-            System.out.println("run instr ADD");
         int r0 = (instruction >> 9) & 0x7;
         int r1 = (instruction >> 6) & 0x7;
         int imm_flag = (instruction >> 5) & 0x1;
+        if(debug){
+            System.out.print("run instr ADD : ");
+            System.out.print("destination register %d, first register is %d , value is %d,".formatted(r0, r1, reg[r1]));
+        }
         if(imm_flag != 0){
             int imm5 = sign_extend(instruction & 0x1F, 5);
+            if(debug) System.out.println("second value is " + imm5);
             reg[r0] =  reg[r1] + imm5;
         }else {
             int r2 = instruction & 0x7;
+            if(debug) System.out.println("second value is " + reg[r2]);
             reg[r0] = reg[r1] + reg[r2];
         }
         update_flag(r0);
@@ -89,7 +93,14 @@ public class Emulator {
             System.out.println("run instr LDI");
         int r0 =  (instr >> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
-        reg[r0] = Memory.mem_read(Memory.mem_read(reg[Registers.R_PC] + pc_offset));
+        int load_data_loc = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
+        if(debug){
+            System.out.println(
+                "register is %d, pc value is  %d, pc_offset is %d, load_data_loc in memory is %d"
+                    .formatted(r0, reg[Registers.R_PC], pc_offset, load_data_loc)
+            );
+        }
+        reg[r0] = Memory.mem_read(load_data_loc);
         update_flag(r0);
     }
 
@@ -119,10 +130,22 @@ public class Emulator {
     }
 
     void BR(int instr){
-        if(debug)
-            System.out.println("run instr BR");
         int pc_offset = sign_extend(instr & 0x1FF, 9);
         int cond_flag = (instr >> 9) & 0x7;
+        if(debug){
+            System.out.print("run instr BR : ");
+            System.out.println(
+                "cond_flag is %d, R_COND %d, cond_flag & R_COND %d , pc_offset is %d, instr in pc + 1 value is %s, plus offset instr %s"
+                .formatted(
+                    cond_flag,
+                    reg[Registers.R_COND],
+                    cond_flag & reg[Registers.R_COND],
+                    pc_offset,
+                    Integer.toBinaryString( Memory.mem_read(reg[Registers.R_PC] + 1) ),
+                    Integer.toBinaryString( Memory.mem_read(reg[Registers.R_PC] + pc_offset) )
+                )
+            );
+        }
         if((cond_flag & reg[Registers.R_COND]) != 0)
             reg[Registers.R_PC] += pc_offset;
     }
@@ -190,11 +213,14 @@ public class Emulator {
     }
 
     void STI(int instr){
-        if(debug)
-            System.out.println("run instr STI");
         int r0 = (instr >> 9) & 0x7;
         int pc_offset = sign_extend(instr & 0x1FF, 9);
-        Memory.mem_write(Memory.mem_read(reg[Registers.R_PC] + pc_offset) , reg[r0]);
+        int write_location = Memory.mem_read(reg[Registers.R_PC] + pc_offset);
+        if(debug){
+            System.out.print("run instr STI ");
+            System.out.println("write from register %d, write to memory %d, pc is %d, offset is %d".formatted(r0, write_location, reg[Registers.R_PC], pc_offset));
+        }
+        Memory.mem_write( write_location, reg[r0] );
     }
 
     /** store register */
@@ -280,8 +306,9 @@ public class Emulator {
     }
 
     void run_instruction(int instr){
-        if(debug)
-        System.out.println("instr is %d".formatted(instr));
+        if(debug){
+            System.out.println("*".repeat(10) + " start run instr %s".formatted( Integer.toBinaryString( instr )) + "*".repeat(10));
+        }
         int op = instr >> 12;
         switch (op){
             case Opcodes.OP_ADD -> ADD(instr);
@@ -304,5 +331,7 @@ public class Emulator {
                 System.exit(1);
             }
         }
+        if(debug)
+            System.out.println("%s end run instr %s %s".formatted("*".repeat(10), Integer.toBinaryString(instr), "*".repeat(10)));
     }
 }
